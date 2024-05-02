@@ -225,7 +225,8 @@ class AXI4Master(BusDriver):
 
                 self.bus.WVALID.value = 1
                 self.bus.WDATA.value = mask_and_shift(word, size * 8, narrow_block)
-                self.bus.WSTRB.value = mask_and_shift(strobe, size, narrow_block)
+                if hasattr(self.bus, "WSTRB"):
+                    self.bus.WSTRB.value = mask_and_shift(strobe, size, narrow_block)
 
                 if burst is not AXIBurst.FIXED:
                     narrow_block = (narrow_block + 1) % (wdata_bytes // size)
@@ -485,12 +486,12 @@ class AXI4LiteMaster(AXI4Master):
     """AXI4-Lite Master"""
 
     _signals = ["AWVALID", "AWADDR", "AWREADY",        # Write address channel
-                "WVALID", "WREADY", "WDATA", "WSTRB",  # Write data channel
+                "WVALID", "WREADY", "WDATA",           # Write data channel
                 "BVALID", "BREADY", "BRESP",           # Write response channel
                 "ARVALID", "ARADDR", "ARREADY",        # Read address channel
                 "RVALID", "RREADY", "RRESP", "RDATA"]  # Read data channel
 
-    _optional_signals = []
+    _optional_signals = [ "WSTRB" ]
 
     @cocotb.coroutine
     async def write(
