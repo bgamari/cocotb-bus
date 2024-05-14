@@ -565,15 +565,15 @@ class AXI4Slave(BusDriver):
 
         "AWREADY", "AWADDR",  "AWVALID",            # Write address channel
 
-        "WREADY",  "WVALID",  "WDATA",
+        "WREADY",  "WVALID",  "WDATA",              # Write data channel
 
+        "BVALID",  "BREADY",  "BRESP",              # Write response channel
     ]
 
     # Not currently supported by this driver
     _optional_signals = [
         "WLAST",   "WSTRB",
-        "BVALID",  "BREADY",  "BRESP",   "RRESP",
-        "RCOUNT",  "WCOUNT",  "RACOUNT", "WACOUNT",
+        "RRESP", "RCOUNT",  "WCOUNT",  "RACOUNT", "WACOUNT",
         "ARLOCK",  "AWLOCK",  "ARCACHE", "AWCACHE",
         "ARQOS",   "AWQOS",   "ARID",    "AWID",
         "BID",     "RID",     "WID",
@@ -656,6 +656,17 @@ class AXI4Slave(BusDriver):
                     if burst_count == 0:
                         break
                 await clock_re
+
+            # Send response
+            self.bus.BVALID.value = 1
+            self.bus.BRESP.value = 0
+            while True:
+                await clock_re
+                if self.bus.BREADY.value:
+                    break
+
+            await clock_re
+            self.bus.BVALID.value = 0
 
     async def _read_data(self):
         clock_re = RisingEdge(self.clock)
