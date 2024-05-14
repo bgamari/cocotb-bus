@@ -560,12 +560,10 @@ class AXI4Slave(BusDriver):
     '''
     _signals = [
         "ARREADY", "ARVALID", "ARADDR",             # Read address channel
-        "ARLEN",   "ARSIZE",  "ARBURST", "ARPROT",
 
         "RREADY",  "RVALID",  "RDATA",   "RLAST",   # Read response channel
 
         "AWREADY", "AWADDR",  "AWVALID",            # Write address channel
-        "AWPROT",  "AWSIZE",  "AWBURST", "AWLEN",
 
         "WREADY",  "WVALID",  "WDATA",
 
@@ -578,7 +576,10 @@ class AXI4Slave(BusDriver):
         "RCOUNT",  "WCOUNT",  "RACOUNT", "WACOUNT",
         "ARLOCK",  "AWLOCK",  "ARCACHE", "AWCACHE",
         "ARQOS",   "AWQOS",   "ARID",    "AWID",
-        "BID",     "RID",     "WID"
+        "BID",     "RID",     "WID",
+
+        "ARLEN",   "ARSIZE",  "ARBURST", "ARPROT",
+        "AWPROT",  "AWSIZE",  "AWBURST", "AWLEN",
     ]
 
     def __init__(self, entity, name, clock, memory, callback=None, event=None,
@@ -621,10 +622,10 @@ class AXI4Slave(BusDriver):
 
             await ReadOnly()
             _awaddr = int(self.bus.AWADDR)
-            _awlen = int(self.bus.AWLEN)
-            _awsize = int(self.bus.AWSIZE)
-            _awburst = int(self.bus.AWBURST)
-            _awprot = int(self.bus.AWPROT)
+            _awlen = int(self.bus.AWLEN) if hasattr(self.bus, "AWLEN") else 0
+            _awsize = int(self.bus.AWSIZE) if hasattr(self.bus, "AWSIZE") else 3
+            _awburst = int(self.bus.AWBURST) if hasattr(self.bus, "AWBURST") else AXIBurst.INCR
+            _awprot = int(self.bus.AWPROT) if hasattr(self.bus, "AWPROT") else 0
 
             burst_length = _awlen + 1
             bytes_in_beat = self._size_to_bytes_in_beat(_awsize)
@@ -668,10 +669,10 @@ class AXI4Slave(BusDriver):
 
             await ReadOnly()
             _araddr = int(self.bus.ARADDR)
-            _arlen = int(self.bus.ARLEN)
-            _arsize = int(self.bus.ARSIZE)
-            _arburst = int(self.bus.ARBURST)
-            _arprot = int(self.bus.ARPROT)
+            _arlen = int(self.bus.ARLEN) if hasattr(self.bus, "ARBURST") else 0
+            _arsize = int(self.bus.ARSIZE) if hasattr(self.bus, "ARBURST") else 3
+            _arburst = int(self.bus.ARBURST) if hasattr(self.bus, "ARBURST") else 1
+            _arprot = int(self.bus.ARPROT) if hasattr(self.bus, "ARBURST") else 0
 
             burst_length = _arlen + 1
             bytes_in_beat = self._size_to_bytes_in_beat(_arsize)
