@@ -14,7 +14,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 import cocotb
 from cocotb.binary import BinaryValue
 from cocotb.handle import SimHandleBase
-from cocotb.triggers import ClockCycles, Combine, Lock, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, Combine, Lock, ReadOnly, ReadWrite, RisingEdge
 
 from cocotb_bus.drivers import BusDriver
 
@@ -614,6 +614,7 @@ class AXI4Slave(BusDriver):
                 self.bus.WREADY.value = 0
                 await ReadOnly()
                 if self.bus.AWVALID.value:
+                    await ReadWrite()
                     self.bus.WREADY.value = 1
                     break
                 await clock_re
@@ -699,6 +700,7 @@ class AXI4Slave(BusDriver):
                     _st = _araddr + (_burst_diff * bytes_in_beat)
                     _end = _araddr + ((_burst_diff + 1) * bytes_in_beat)
                     word.buff = self._memory[_st:_end].tobytes()
+                    await ReadWrite()
                     self.bus.RDATA.value = word
                     if burst_count == 1:
                         self.bus.RLAST.value = 1
