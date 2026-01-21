@@ -13,8 +13,12 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import cocotb
 from cocotb.handle import SimHandleBase
-from cocotb.triggers import ClockCycles, Combine, Lock, ReadOnly, RisingEdge, NextTimeStep
+<<<<<<< HEAD
+from cocotb.triggers import ClockCycles, Combine, Lock, ReadOnly, ReadWrite, RisingEdge
+=======
+from cocotb.triggers import ClockCycles, Combine, Lock, ReadOnly, RisingEdge
 from cocotb.types import LogicArray, Range
+>>>>>>> v0.3.0
 
 from cocotb_bus._compat import (
     BinaryType,
@@ -590,13 +594,21 @@ class AXI4Master(BusDriver):
 class AXI4LiteMaster(AXI4Master):
     """AXI4-Lite Master"""
 
+<<<<<<< HEAD
+    _signals = ["AWVALID", "AWADDR", "AWREADY",        # Write address channel
+                "WVALID", "WREADY", "WDATA",           # Write data channel
+                "BVALID", "BREADY", "BRESP",           # Write response channel
+                "ARVALID", "ARADDR", "ARREADY",        # Read address channel
+                "RVALID", "RREADY", "RRESP", "RDATA"]  # Read data channel
+=======
     _signals = [
         "AWVALID",
         "AWADDR",
         "AWREADY",  # Write address channel
         "WVALID",
         "WREADY",
-        "WDATA",  # Write data channel
+        "WDATA",
+        "WSTRB",  # Write data channel
         "BVALID",
         "BREADY",
         "BRESP",  # Write response channel
@@ -606,12 +618,11 @@ class AXI4LiteMaster(AXI4Master):
         "RVALID",
         "RREADY",
         "RRESP",
-        "RDATA",  # Read data channel
-    ]
+        "RDATA",
+    ]  # Read data channel
+>>>>>>> v0.3.0
 
-    _optional_signals = [
-        "WSTRB",
-    ]
+    _optional_signals = [ "WSTRB" ]
 
     async def write(
         self,
@@ -691,37 +702,56 @@ class AXI4Slave(BusDriver):
     AXI4 Slave
 
     Monitors an internal memory and handles read and write requests.
-    Also serves as base class for AXI4LiteSlave.
     """
 
     _signals = [
+<<<<<<< HEAD
+        "ARREADY", "ARVALID", "ARADDR",             # Read address channel
+
+        "RREADY",  "RVALID",  "RDATA",   "RLAST",   # Read response channel
+
+        "AWREADY", "AWADDR",  "AWVALID",            # Write address channel
+
+        "WREADY",  "WVALID",  "WDATA",              # Write data channel
+
+        "BVALID",  "BREADY",  "BRESP",              # Write response channel
+=======
         "ARREADY",
         "ARVALID",
         "ARADDR",  # Read address channel
-        "RREADY",
-        "RVALID",
-        "RDATA",  # Read response channel
-        "AWREADY",
-        "AWADDR",
-        "AWVALID",  # Write address channel
-        "WREADY",
-        "WVALID",
-        "WDATA",
-    ]
-
-    # Burst-related and other optional signals
-    _optional_signals = [
-        # Burst-related signals (required for AXI4, not used for AXI4-Lite)
         "ARLEN",
         "ARSIZE",
         "ARBURST",
         "ARPROT",
-        "AWLEN",
+        "RREADY",
+        "RVALID",
+        "RDATA",
+        "RLAST",  # Read response channel
+        "AWREADY",
+        "AWADDR",
+        "AWVALID",  # Write address channel
+        "AWPROT",
         "AWSIZE",
         "AWBURST",
-        "AWPROT",
-        "RLAST",
-        # Other optional signals
+        "AWLEN",
+        "WREADY",
+        "WVALID",
+        "WDATA",
+>>>>>>> v0.3.0
+    ]
+
+    # Not currently supported by this driver
+    _optional_signals = [
+<<<<<<< HEAD
+        "WLAST",   "WSTRB",
+        "RRESP", "RCOUNT",  "WCOUNT",  "RACOUNT", "WACOUNT",
+        "ARLOCK",  "AWLOCK",  "ARCACHE", "AWCACHE",
+        "ARQOS",   "AWQOS",   "ARID",    "AWID",
+        "BID",     "RID",     "WID",
+
+        "ARLEN",   "ARSIZE",  "ARBURST", "ARPROT",
+        "AWPROT",  "AWSIZE",  "AWBURST", "AWLEN",
+=======
         "WLAST",
         "WSTRB",
         "BVALID",
@@ -743,6 +773,7 @@ class AXI4Slave(BusDriver):
         "BID",
         "RID",
         "WID",
+>>>>>>> v0.3.0
     ]
 
     def __init__(
@@ -762,8 +793,7 @@ class AXI4Slave(BusDriver):
         self.big_endian = big_endian
         self.bus.ARREADY.value = 1
         self.bus.RVALID.value = 0
-        if hasattr(self.bus, "RLAST"):
-            self.bus.RLAST.value = 0
+        self.bus.RLAST.value = 0
         self.bus.AWREADY.value = 1
         self._memory = memory
 
@@ -786,34 +816,25 @@ class AXI4Slave(BusDriver):
             while True:
                 self.bus.WREADY.value = 0
                 await ReadOnly()
+<<<<<<< HEAD
+                if self.bus.AWVALID.value:
+                    await ReadWrite()
+=======
                 if str(self.bus.AWVALID.value) == "1":
-                    await NextTimeStep()
+>>>>>>> v0.3.0
                     self.bus.WREADY.value = 1
                     break
                 await clock_re
 
             await ReadOnly()
             _awaddr = int(self.bus.AWADDR)
-
-            # Handle optional burst signals (for AXI4-Lite compatibility)
-            # Default to single-beat transfer with full data width
-            if hasattr(self.bus, "AWLEN"):
-                _awlen = int(self.bus.AWLEN)
-                burst_length = _awlen + 1
-            else:
-                _awlen = 0
-                burst_length = 1
-
-            if hasattr(self.bus, "AWSIZE"):
-                _awsize = int(self.bus.AWSIZE)
-                bytes_in_beat = self._size_to_bytes_in_beat(_awsize)
-            else:
-                # Default to full data width
-                bytes_in_beat = len(self.bus.WDATA) // 8
-                _awsize = bytes_in_beat.bit_length() - 1
-
-            _awburst = int(self.bus.AWBURST) if hasattr(self.bus, "AWBURST") else 0
+            _awlen = int(self.bus.AWLEN) if hasattr(self.bus, "AWLEN") else 0
+            _awsize = int(self.bus.AWSIZE) if hasattr(self.bus, "AWSIZE") else 3
+            _awburst = int(self.bus.AWBURST) if hasattr(self.bus, "AWBURST") else AXIBurst.INCR
             _awprot = int(self.bus.AWPROT) if hasattr(self.bus, "AWPROT") else 0
+
+            burst_length = _awlen + 1
+            bytes_in_beat = self._size_to_bytes_in_beat(_awsize)
 
             if __debug__:
                 self.log.debug(
@@ -844,6 +865,17 @@ class AXI4Slave(BusDriver):
                         break
                 await clock_re
 
+            # Send response
+            self.bus.BVALID.value = 1
+            self.bus.BRESP.value = 0
+            while True:
+                await clock_re
+                if self.bus.BREADY.value:
+                    break
+
+            await clock_re
+            self.bus.BVALID.value = 0
+
     async def _read_data(self):
         clock_re = RisingEdge(self.clock)
 
@@ -856,26 +888,13 @@ class AXI4Slave(BusDriver):
 
             await ReadOnly()
             _araddr = int(self.bus.ARADDR)
+            _arlen = int(self.bus.ARLEN) if hasattr(self.bus, "ARBURST") else 0
+            _arsize = int(self.bus.ARSIZE) if hasattr(self.bus, "ARBURST") else 3
+            _arburst = int(self.bus.ARBURST) if hasattr(self.bus, "ARBURST") else 1
+            _arprot = int(self.bus.ARPROT) if hasattr(self.bus, "ARBURST") else 0
 
-            # Handle optional burst signals (for AXI4-Lite compatibility)
-            # Default to single-beat transfer with full data width
-            if hasattr(self.bus, "ARLEN"):
-                _arlen = int(self.bus.ARLEN)
-                burst_length = _arlen + 1
-            else:
-                _arlen = 0
-                burst_length = 1
-
-            if hasattr(self.bus, "ARSIZE"):
-                _arsize = int(self.bus.ARSIZE)
-                bytes_in_beat = self._size_to_bytes_in_beat(_arsize)
-            else:
-                # Default to full data width
-                bytes_in_beat = len(self.bus.RDATA) // 8
-                _arsize = bytes_in_beat.bit_length() - 1
-
-            _arburst = int(self.bus.ARBURST) if hasattr(self.bus, "ARBURST") else 0
-            _arprot = int(self.bus.ARPROT) if hasattr(self.bus, "ARPROT") else 0
+            burst_length = _arlen + 1
+            bytes_in_beat = self._size_to_bytes_in_beat(_arsize)
 
             if __debug__:
                 self.log.debug(
@@ -893,59 +912,27 @@ class AXI4Slave(BusDriver):
             await clock_re
 
             while True:
-                await NextTimeStep()
                 self.bus.RVALID.value = 1
                 await ReadOnly()
                 if str(self.bus.RREADY.value) == "1":
                     _burst_diff = burst_length - burst_count
                     _st = _araddr + (_burst_diff * bytes_in_beat)
                     _end = _araddr + ((_burst_diff + 1) * bytes_in_beat)
-                    await NextTimeStep()
+<<<<<<< HEAD
+                    word.buff = self._memory[_st:_end].tobytes()
+                    await ReadWrite()
+                    self.bus.RDATA.value = word
+=======
                     self.bus.RDATA.value = create_binary(
                         self._memory[_st:_end].tobytes(),
                         bytes_in_beat * 8,
                         self.big_endian,
                     )
-                    if burst_count == 1 and hasattr(self.bus, "RLAST"):
+>>>>>>> v0.3.0
+                    if burst_count == 1:
                         self.bus.RLAST.value = 1
                 await clock_re
                 burst_count -= 1
-                await NextTimeStep()
-                if hasattr(self.bus, "RLAST"):
-                    self.bus.RLAST.value = 0
+                self.bus.RLAST.value = 0
                 if burst_count == 0:
                     break
-
-
-class AXI4LiteSlave(AXI4Slave):
-    """
-    AXI4-Lite Slave
-
-    Monitors an internal memory and handles read and write requests.
-    AXI4-Lite is a subset of AXI4 with no burst support (single beat transfers only).
-    """
-
-    _signals = [
-        "ARREADY",
-        "ARVALID",
-        "ARADDR",  # Read address channel
-        "RREADY",
-        "RVALID",
-        "RDATA",  # Read response channel
-        "AWREADY",
-        "AWADDR",
-        "AWVALID",  # Write address channel
-        "WREADY",
-        "WVALID",
-        "WDATA",
-    ]
-
-    _optional_signals = [
-        "ARPROT",
-        "AWPROT",
-        "WSTRB",
-        "BVALID",
-        "BREADY",
-        "BRESP",
-        "RRESP",
-    ]
