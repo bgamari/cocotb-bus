@@ -689,34 +689,37 @@ class AXI4Slave(BusDriver):
     AXI4 Slave
 
     Monitors an internal memory and handles read and write requests.
+    Also serves as base class for AXI4LiteSlave.
     """
 
     _signals = [
         "ARREADY",
         "ARVALID",
         "ARADDR",  # Read address channel
-        "ARLEN",
-        "ARSIZE",
-        "ARBURST",
-        "ARPROT",
         "RREADY",
         "RVALID",
-        "RDATA",
-        "RLAST",  # Read response channel
+        "RDATA",  # Read response channel
         "AWREADY",
         "AWADDR",
         "AWVALID",  # Write address channel
-        "AWPROT",
-        "AWSIZE",
-        "AWBURST",
-        "AWLEN",
         "WREADY",
         "WVALID",
         "WDATA",
     ]
 
-    # Not currently supported by this driver
+    # Burst-related and other optional signals
     _optional_signals = [
+        # Burst-related signals (required for AXI4, not used for AXI4-Lite)
+        "ARLEN",
+        "ARSIZE",
+        "ARBURST",
+        "ARPROT",
+        "AWLEN",
+        "AWSIZE",
+        "AWBURST",
+        "AWPROT",
+        "RLAST",
+        # Other optional signals
         "WLAST",
         "WSTRB",
         "BVALID",
@@ -757,7 +760,8 @@ class AXI4Slave(BusDriver):
         self.big_endian = big_endian
         self.bus.ARREADY.value = 1
         self.bus.RVALID.value = 0
-        self.bus.RLAST.value = 0
+        if hasattr(self.bus, "RLAST"):
+            self.bus.RLAST.value = 0
         self.bus.AWREADY.value = 1
         self._memory = memory
 
@@ -787,13 +791,26 @@ class AXI4Slave(BusDriver):
 
             await ReadOnly()
             _awaddr = int(self.bus.AWADDR)
-            _awlen = int(self.bus.AWLEN)
-            _awsize = int(self.bus.AWSIZE)
-            _awburst = int(self.bus.AWBURST)
-            _awprot = int(self.bus.AWPROT)
 
-            burst_length = _awlen + 1
-            bytes_in_beat = self._size_to_bytes_in_beat(_awsize)
+            # Handle optional burst signals (for AXI4-Lite compatibility)
+            # Default to single-beat transfer with full data width
+            if hasattr(self.bus, "AWLEN"):
+                _awlen = int(self.bus.AWLEN)
+                burst_length = _awlen + 1
+            else:
+                _awlen = 0
+                burst_length = 1
+
+            if hasattr(self.bus, "AWSIZE"):
+                _awsize = int(self.bus.AWSIZE)
+                bytes_in_beat = self._size_to_bytes_in_beat(_awsize)
+            else:
+                # Default to full data width
+                bytes_in_beat = len(self.bus.WDATA) // 8
+                _awsize = bytes_in_beat.bit_length() - 1
+
+            _awburst = int(self.bus.AWBURST) if hasattr(self.bus, "AWBURST") else 0
+            _awprot = int(self.bus.AWPROT) if hasattr(self.bus, "AWPROT") else 0
 
             if __debug__:
                 self.log.debug(
@@ -836,13 +853,26 @@ class AXI4Slave(BusDriver):
 
             await ReadOnly()
             _araddr = int(self.bus.ARADDR)
-            _arlen = int(self.bus.ARLEN)
-            _arsize = int(self.bus.ARSIZE)
-            _arburst = int(self.bus.ARBURST)
-            _arprot = int(self.bus.ARPROT)
 
-            burst_length = _arlen + 1
-            bytes_in_beat = self._size_to_bytes_in_beat(_arsize)
+            # Handle optional burst signals (for AXI4-Lite compatibility)
+            # Default to single-beat transfer with full data width
+            if hasattr(self.bus, "ARLEN"):
+                _arlen = int(self.bus.ARLEN)
+                burst_length = _arlen + 1
+            else:
+                _arlen = 0
+                burst_length = 1
+
+            if hasattr(self.bus, "ARSIZE"):
+                _arsize = int(self.bus.ARSIZE)
+                bytes_in_beat = self._size_to_bytes_in_beat(_arsize)
+            else:
+                # Default to full data width
+                bytes_in_beat = len(self.bus.RDATA) // 8
+                _arsize = bytes_in_beat.bit_length() - 1
+
+            _arburst = int(self.bus.ARBURST) if hasattr(self.bus, "ARBURST") else 0
+            _arprot = int(self.bus.ARPROT) if hasattr(self.bus, "ARPROT") else 0
 
             if __debug__:
                 self.log.debug(
@@ -871,10 +901,45 @@ class AXI4Slave(BusDriver):
                         bytes_in_beat * 8,
                         self.big_endian,
                     )
-                    if burst_count == 1:
+                    if burst_count == 1 and hasattr(self.bus, "RLAST"):
                         self.bus.RLAST.value = 1
                 await clock_re
                 burst_count -= 1
-                self.bus.RLAST.value = 0
+                if hasattr(self.bus, "RLAST"):
+                    self.bus.RLAST.value = 0
                 if burst_count == 0:
                     break
+
+
+class AXI4LiteSlave(AXI4Slave):
+    """
+    AXI4-Lite Slave
+
+    Monitors an internal memory and handles read and write requests.
+    AXI4-Lite is a subset of AXI4 with no burst support (single beat transfers only).
+    """
+
+    _signals = [
+        "ARREADY",
+        "ARVALID",
+        "ARADDR",  # Read address channel
+        "RREADY",
+        "RVALID",
+        "RDATA",  # Read response channel
+        "AWREADY",
+        "AWADDR",
+        "AWVALID",  # Write address channel
+        "WREADY",
+        "WVALID",
+        "WDATA",
+    ]
+
+    _optional_signals = [
+        "ARPROT",
+        "AWPROT",
+        "WSTRB",
+        "BVALID",
+        "BREADY",
+        "BRESP",
+        "RRESP",
+    ]
